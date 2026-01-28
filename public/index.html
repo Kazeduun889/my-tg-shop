@@ -3,55 +3,154 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gift Shop</title>
+    <title>Gift Shop v0.2</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: sans-serif; background-color: var(--tg-theme-bg-color); color: var(--tg-theme-text-color); display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; padding: 20px; }
-        .gift-card { border: 1px solid #ccc; padding: 15px; border-radius: 12px; text-align: center; width: 140px; }
-        .gift-card img { width: 80px; height: 80px; }
-        button { background: #0088cc; color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; margin-top: 10px; width: 100%; }
+        :root {
+            --tg-theme-bg: var(--tg-theme-bg-color, #ffffff);
+            --tg-theme-text: var(--tg-theme-text-color, #000000);
+            --tg-theme-hint: var(--tg-theme-hint-color, #999999);
+            --tg-theme-button: var(--tg-theme-button-color, #248bcf);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--tg-theme-bg);
+            color: var(--tg-theme-text);
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header { text-align: center; margin-bottom: 20px; }
+        .header h1 { font-size: 20px; margin: 0; }
+        .header p { color: var(--tg-theme-hint); font-size: 14px; }
+
+        .shop-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            width: 100%;
+        }
+
+        .card {
+            background: rgba(127, 127, 127, 0.05);
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid rgba(127, 127, 127, 0.1);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .card img {
+            width: 100%;
+            height: 100px;
+            object-fit: contain;
+            margin-bottom: 10px;
+            border-radius: 10px;
+        }
+
+        .card h3 { font-size: 16px; margin: 5px 0; }
+        .card .price { font-weight: bold; color: #ffa500; margin-bottom: 10px; }
+
+        button {
+            background-color: var(--tg-theme-button);
+            color: white;
+            border: none;
+            padding: 8px;
+            border-radius: 10px;
+            width: 100%;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:active { transform: scale(0.98); }
     </style>
 </head>
 <body>
 
-    <div class="gift-card">
-        <img src="https://cdn-icons-png.flaticon.com/512/2551/2551022.png" alt="Gift">
-        <h3>Подарок #1</h3>
-        <p>15 ⭐</p>
-        <button onclick="buyGift('gift_1')">Купить</button>
+    <div class="header">
+        <h1>Магазин Подарков</h1>
+        <p>Все товары стоят 15 звезд</p>
     </div>
 
-    <div class="gift-card">
-        <img src="https://cdn-icons-png.flaticon.com/512/2551/2551022.png" alt="Gift">
-        <h3>Подарок #2</h3>
-        <p>15 ⭐</p>
-        <button onclick="buyGift('gift_2')">Купить</button>
-    </div>
+    <div id="shop" class="shop-container"></div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        async function buyGift(itemId) {
-            // Отправляем запрос на ваш бэкенд для создания счета
-            const response = await fetch('/create-stars-invoice', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ item: itemId, userId: tg.initDataUnsafe.user.id })
-            });
-            
-            const data = await response.json();
-            
-            // Открываем нативную форму оплаты Telegram Stars
-            tg.openInvoice(data.invoice_link, function(status) {
-                if (status === 'paid') {
-                    tg.showAlert("Оплата прошла успешно!");
-                } else if (status === 'cancelled') {
-                    tg.showAlert("Оплата отменена");
-                } else {
-                    tg.showAlert("Ошибка оплаты");
+        // СПИСОК ТОВАРОВ (Меняй картинки и названия тут)
+        const products = [
+            {
+                id: 'blue_gift',
+                name: 'Синий бокс',
+                price: 15,
+                image: 'https://cdn-icons-png.flaticon.com/512/2143/2143150.png' // Замени на свою ссылку
+            },
+            {
+                id: 'red_gift',
+                name: 'Красный бокс',
+                price: 15,
+                image: 'https://cdn-icons-png.flaticon.com/512/2143/2143121.png'
+            },
+            {
+                id: 'premium_box',
+                name: 'Премиум',
+                price: 15,
+                image: 'https://cdn-icons-png.flaticon.com/512/4213/4213958.png'
+            },
+            {
+                id: 'mega_gift',
+                name: 'Мега сюрприз',
+                price: 15,
+                image: 'https://cdn-icons-png.flaticon.com/512/2551/2551022.png'
+            }
+        ];
+
+        const shopContainer = document.getElementById('shop');
+
+        // Рендерим товары
+        products.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <img src="${item.image}" alt="${item.name}">
+                <h3>${item.name}</h3>
+                <p class="price">${item.price} ⭐</p>
+                <button onclick="buy('${item.id}', '${item.name}')">Купить</button>
+            `;
+            shopContainer.appendChild(card);
+        });
+
+        async function buy(id, name) {
+            try {
+                const response = await fetch('/create-stars-invoice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        item: name, 
+                        itemId: id,
+                        userId: tg.initDataUnsafe.user?.id 
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.invoice_link) {
+                    tg.openInvoice(data.invoice_link, (status) => {
+                        if (status === 'paid') {
+                            tg.showAlert("Ура! Подарок куплен.");
+                        }
+                    });
                 }
-            });
+            } catch (e) {
+                tg.showAlert("Ошибка связи с сервером");
+            }
         }
     </script>
 </body>
